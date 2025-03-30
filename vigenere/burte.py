@@ -1,26 +1,59 @@
+import re
 import string
+from crypto import crypt
 
-def crypt(text, key, type):
-    ciphertext = ""
-    l_key = len(key)
-    index = 0
+ENG_FREQ = {
+    'a': 0.08167, 'b': 0.01492, 'c': 0.02782, 'd': 0.04253, 'e': 0.12702,
+    'f': 0.02228, 'g': 0.02015, 'h': 0.06094, 'i': 0.06966, 'j': 0.00153,
+    'k': 0.00772, 'l': 0.04025, 'm': 0.02406, 'n': 0.06749, 'o': 0.07507,
+    'p': 0.01929, 'q': 0.00095, 'r': 0.05987, 's': 0.06327, 't': 0.09056,
+    'u': 0.02758, 'v': 0.00978, 'w': 0.02360, 'x': 0.00150, 'y': 0.01974,
+    'z': 0.00074
+}
 
-    for i in range(len(text)):
-        if text[i] in string.ascii_lowercase:
-            base_letter = 'a'
-        elif text[i] in string.ascii_uppercase:
-            base_letter = 'A'
-        else:
-            ciphertext += text[i]
-            continue
-        iv = ord(key[index % l_key]) - ord('a')
-        offset = ord(text[i]) + iv if type == "0" else ord(text[i]) - iv
-        ciphertext += chr((offset - ord(base_letter)) % 26 + ord(base_letter))
-        index += 1
-    return ciphertext
 
-if __name__ == "__main__":
-    text = """
+def filter_text(ciphertext):
+    """预处理：去除非字母字符，转为大写"""
+    return re.sub(r'[^a-zA-Z]', '', ciphertext).lower()
+
+
+def cal_fre(text: str):
+    res = {}
+    for c in string.ascii_lowercase:
+        res[c] = text.count(c)
+    return res
+
+
+def _calc_confidence(freq, text_length: int) -> float:
+    confidence = 0.0
+    for c in string.ascii_lowercase:
+        eng_freq = ENG_FREQ[c]  # 标准英语频率（如 e=0.127）
+        decrypted_freq = freq.get(c, 0) / text_length  # 解密文本的频率
+        confidence += (eng_freq - decrypted_freq) ** 2  # 平方差累加
+    return 1 / (1 + confidence / 26)  # 归一化为置信度
+
+
+def brute_force_decrypt(cipher: str, key_length: int, top_n: int = 3):
+    cipher = filter_text(cipher.lower())
+
+    # 按字符长度分组切片
+    slices = ['' for _ in range(key_length)]
+    for i, char in enumerate(cipher):
+        slices[i % key_length] += char
+    key_possibilities = []
+
+    for s in slices:
+        possibilities = {}
+        for shift in range(26):
+            key_char = chr(ord('a') + shift)
+            decrypted_slice = crypt(s, key_char, 1)
+            possibilities[key_char] = _calc_confidence(cal_fre(decrypted_slice), len(s))
+        sorted_possibilities = sorted(possibilities.items(), key=lambda x: x[1], reverse=True)
+        key_possibilities.append(sorted_possibilities[:top_n])
+    return key_possibilities
+
+
+ciphertext = """
     g vjganxsymda ux ylt vtvjttajwsgt bl udfteyhfgt
 oe btlc ckjwc qnxdta
 vbbwwrbrtlx su gnw nrshylwmpy cgwps, lum bipee ynecgy gk jaryz frs fzwjp, x puej jgbs udfteyhfgt, gnw sil uuej su zofi. sc okzfpu bl lmi uhzmwi, x nyc dsj bl lmi enyl ys argnj yh nrgsi. nba swi cbz ojprbsw fqdam mx. cdh nsai cb ygaigroysxn jnwwi lr msylte.
@@ -41,8 +74,8 @@ xwryw nrreksxmctrq mshgodj ecq igqscvgd ripfajjw eyguj yh vt lmi hnsw ushvzatr p
 lr caqp reksyi p ponnpxmglnsc bl lmi bvtv nr rlhwwweniw. ren vz tj qdek zzqpak ssh unoj ylpa zzj aderv dsje mgaigaswsxh ugnj qpqk tjjdek.
 xqev vy ewgis balicrxw hvnczg hvppq efr, eyksxi pqj mshteyutvt ntv hygye twerry.
     """
-    key = "gsfepn"
-    # 0加密 1解密
-    type = 1
-    key = key.lower()
-    print(crypt(text, key, type))
+key_dict = brute_force_decrypt(ciphertext, 6)
+key = ""
+for _ in key_dict:
+    key += _[0][0]
+print(key)

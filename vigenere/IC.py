@@ -1,26 +1,41 @@
+import re
 import string
 
-def crypt(text, key, type):
-    ciphertext = ""
-    l_key = len(key)
-    index = 0
 
-    for i in range(len(text)):
-        if text[i] in string.ascii_lowercase:
-            base_letter = 'a'
-        elif text[i] in string.ascii_uppercase:
-            base_letter = 'A'
-        else:
-            ciphertext += text[i]
-            continue
-        iv = ord(key[index % l_key]) - ord('a')
-        offset = ord(text[i]) + iv if type == "0" else ord(text[i]) - iv
-        ciphertext += chr((offset - ord(base_letter)) % 26 + ord(base_letter))
-        index += 1
-    return ciphertext
+def filter_text(ciphertext):
+    """预处理：去除非字母字符，转为大写"""
+    return re.sub(r'[^a-zA-Z]', '', ciphertext).lower()
 
-if __name__ == "__main__":
-    text = """
+
+# 计算重合指数
+def calc_ic(freq, text_length: int) -> float:
+    ic = sum(count * (count - 1) for count in freq.values())
+    ic /= text_length * (text_length - 1)
+    return ic
+
+
+def cal_freq(text: str):
+    freq = {}
+    for _ in string.ascii_lowercase:
+        freq[_] = text.count(_)
+    return freq
+
+
+def guess_length(cipher, key_length):
+    ic_std = 0.065
+    cipher = filter_text(cipher.lower())
+
+    # 按字符长度分组切片
+    slices = ['' for _ in range(key_length)]
+    for i, char in enumerate(cipher):
+        slices[i % key_length] += char
+    ic_value = []
+    for s in slices:
+        ic_value.append(calc_ic(cal_freq(s), len(s)))
+    return sum(ic_value)/len(ic_value)
+
+
+ciphertext = """
     g vjganxsymda ux ylt vtvjttajwsgt bl udfteyhfgt
 oe btlc ckjwc qnxdta
 vbbwwrbrtlx su gnw nrshylwmpy cgwps, lum bipee ynecgy gk jaryz frs fzwjp, x puej jgbs udfteyhfgt, gnw sil uuej su zofi. sc okzfpu bl lmi uhzmwi, x nyc dsj bl lmi enyl ys argnj yh nrgsi. nba swi cbz ojprbsw fqdam mx. cdh nsai cb ygaigroysxn jnwwi lr msylte.
@@ -41,8 +56,7 @@ xwryw nrreksxmctrq mshgodj ecq igqscvgd ripfajjw eyguj yh vt lmi hnsw ushvzatr p
 lr caqp reksyi p ponnpxmglnsc bl lmi bvtv nr rlhwwweniw. ren vz tj qdek zzqpak ssh unoj ylpa zzj aderv dsje mgaigaswsxh ugnj qpqk tjjdek.
 xqev vy ewgis balicrxw hvnczg hvppq efr, eyksxi pqj mshteyutvt ntv hygye twerry.
     """
-    key = "gsfepn"
-    # 0加密 1解密
-    type = 1
-    key = key.lower()
-    print(crypt(text, key, type))
+min_length = 3
+max_length = 10
+for i in range(min_length, max_length + 1):
+    print(i , guess_length(ciphertext, i))
