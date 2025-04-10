@@ -59,4 +59,4 @@ xqev vy ewgis balicrxw hvnczg hvppq efr, eyksxi pqj mshteyutvt ntv hygye twerry.
 min_length = 3
 max_length = 10
 for i in range(min_length, max_length + 1):
-    print(i , guess_length(ciphertext, i))
+    print("私钥长度为"+str(i)+"的IC值为"+str(guess_length(ciphertext, i)))

@@ -78,4 +78,4 @@ key_dict = brute_force_decrypt(ciphertext, 6)
 key = ""
 for _ in key_dict:
     key += _[0][0]
-print(key)
+print("私钥为"+key)
